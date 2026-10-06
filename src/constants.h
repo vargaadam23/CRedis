@@ -1,0 +1,3 @@
+#define REQ_BUFFER_SIZE 1024
+#define PONG_RESPONSE "+PONG\r\n"
+#define MAX_CONNECTIONS 5

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 
 int freeObject(Object *object)
 {
@@ -9,8 +10,8 @@ int freeObject(Object *object)
 
     for (i = 0; i < object->count; i++)
     {
-        free(object->keys + (i * sizeof(char *)));
-        freeValue(object->values + (i * sizeof(struct Value)));
+        freeValue(object->keys[i]);
+        freeValue(object->values[i]);
     }
 
     free(object);
@@ -22,7 +23,7 @@ int freeArray(Array *array)
 
     for (i = 0; i < array->count; i++)
     {
-        freeValue(array->items + (i * sizeof(struct Value)));
+        freeValue(array->items[i]);
     }
 
     free(array);
@@ -58,21 +59,23 @@ int freeValue(Value *value)
     return 1;
 }
 
-ParseError clrfToValue(char *value, Value *out)
+char* clrfToValue(char *value, Value *out)
 {
     size_t valueSize = sizeof(value);
     char *end;
 
     if (valueSize < 2)
     {
-        return PARSE_ERR_EMPTY_STR;
+        errno = PARSE_ERR_EMPTY_STR;
+        return NULL;
     }
 
     ValueType valueType = getValueType(value[0]);
 
     if (valueType == INVALID)
     {
-        return PARSE_ERR_SYNTAX;
+        errno = PARSE_ERR_SYNTAX;
+        return NULL;
     }
 
     out->type = valueType;
@@ -80,7 +83,8 @@ ParseError clrfToValue(char *value, Value *out)
 
     if (*start == '\0' || start == NULL)
     {
-        return PARSE_ERR_UNEXPECTED_END;
+        errno = PARSE_ERR_UNEXPECTED_END;
+        return NULL;
     }
 
     switch (valueType)
@@ -88,9 +92,10 @@ ParseError clrfToValue(char *value, Value *out)
     case VAL_INT:
         end = strstr(start, "\r\n");
 
-        if (*end == '\0' || end == NULL)
+        if (end == NULL || *end == '\0')
         {
-            return PARSE_ERR_UNEXPECTED_END;
+            errno = PARSE_ERR_UNEXPECTED_END;
+            return NULL;
         }
 
         // reuse the start pointer, copy the numeric string in it
@@ -103,19 +108,22 @@ ParseError clrfToValue(char *value, Value *out)
 
         if (*start == '\0' || start == NULL)
         {
-            return PARSE_ERR_UNEXPECTED_END;
+            errno = PARSE_ERR_UNEXPECTED_END;
+            return NULL;
         }
 
         end = strstr(start, "\r\n");
 
-        if (*end == '\0' || end == NULL)
+        if (end == NULL || *end == '\0')
         {
-            return PARSE_ERR_UNEXPECTED_END;
+            errno = PARSE_ERR_UNEXPECTED_END;
+            return NULL;
         }
 
         if (end - start < 0)
         {
-            return PARSE_ERR_EMPTY_STR;
+            errno = PARSE_ERR_EMPTY_STR;
+            return NULL;
         }
 
         out->as.s = malloc(end - start + 1);
@@ -125,9 +133,10 @@ ParseError clrfToValue(char *value, Value *out)
     case VAL_SIMPLE_STR:
         end = strstr(start, "\r\n");
 
-        if (*end == '\0' || end == NULL)
+        if (end == NULL || *end == '\0')
         {
-            return PARSE_ERR_UNEXPECTED_END;
+            errno = PARSE_ERR_UNEXPECTED_END;
+            return NULL;
         }
 
         // reuse the start pointer, copy the numeric string in it
@@ -138,9 +147,10 @@ ParseError clrfToValue(char *value, Value *out)
     case VAL_ERR:
         end = strstr(start, "\r\n");
 
-        if (*end == '\0' || end == NULL)
+        if (end == NULL || *end == '\0')
         {
-            return PARSE_ERR_UNEXPECTED_END;
+            errno = PARSE_ERR_UNEXPECTED_END;
+            return NULL;
         }
 
         // reuse the start pointer, copy the numeric string in it
@@ -148,11 +158,93 @@ ParseError clrfToValue(char *value, Value *out)
 
         memcpy(out->as.err, start, end - start);
         break;
+    case VAL_STRUCT:
+        end = strstr(start, "\r\n");
+
+        if (end == NULL || *end == '\0')
+        {
+            errno = PARSE_ERR_UNEXPECTED_END;
+            return NULL;
+        }
+
+        // reuse the start pointer, copy the numeric string in it
+        memcpy(start, start, end - start);
+
+        long number_of_entries = strtol(start, (char **)NULL, 10);
+
+        Object *map = malloc(sizeof(Object));
+
+        map->count = 0;
+        map->capacity = number_of_entries;
+
+        map->keys = calloc(number_of_entries, sizeof(struct Value *));
+        map->values = calloc(number_of_entries, sizeof(struct Value *));
+
+        int entry_number;
+
+        end = end + 2;
+
+        for (entry_number = 0; entry_number < number_of_entries; entry_number++)
+        {
+            Value *current_key = malloc(sizeof(struct Value));
+            Value *current_value = malloc(sizeof(struct Value));
+
+            char* current_end = clrfToValue(end, current_key);
+            end = clrfToValue(current_end, current_value);
+            printf("Value is %d", current_value->as.i);
+
+            map->keys[entry_number] = current_key;
+            map->values[entry_number] = current_value;
+            map->count++;
+        }
+
+        out->as.obj = map;
+
+        break;
+    case VAL_ARRAY:
+        end = strstr(start, "\r\n");
+
+        if (end == NULL || *end == '\0')
+        {
+            errno = PARSE_ERR_UNEXPECTED_END;
+            return NULL;
+        }
+
+        // reuse the start pointer, copy the numeric string in it
+        memcpy(start, start, end - start);
+
+        long number_ofa_entries = strtol(start, (char **)NULL, 10);
+
+        Array *array = malloc(sizeof(Array));
+
+        array->count = 0;
+        array->capacity = number_ofa_entries;
+
+        array->items = calloc(number_ofa_entries, sizeof(struct Value));
+
+        int aentry_number;
+
+        end = end + 2;
+
+        for (aentry_number = 0; aentry_number < number_ofa_entries; aentry_number++)
+        {
+            Value *current_value = malloc(sizeof(struct Value));
+
+            end = clrfToValue(end, current_value);
+
+            array->items[aentry_number] = current_value;
+            array->count++;
+        }
+
+        out->as.arr = array;
+
+        break;
     default:
-        return PARSE_ERR_SYNTAX;
+        errno = PARSE_ERR_SYNTAX;
+        return NULL;
     }
 
-    return PARSE_OK;
+    return end + 2;
 }
 
 ValueType getValueType(char type)

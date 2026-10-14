@@ -28,14 +28,14 @@ typedef enum {
 typedef struct Value Value;
 
 typedef struct {
-    Value  *items;   // heap array of Value
+    Value  **items;   // heap array of Value
     size_t  count;
     size_t  capacity;
 } Array;
 
 typedef struct {
-    char  **keys;    // keys[i] pairs with values[i]
-    Value  *values;
+    Value  **keys;    // keys[i] pairs with values[i]
+    Value  **values;
     size_t  count;
     size_t  capacity;
 } Object;
@@ -54,8 +54,8 @@ struct Value {
         char *err;
     } as;
 };
-
-ParseError clrfToValue(char* value, Value *out);
+// Retruns the pointer to the end of the currently parsed value
+char* clrfToValue(char* value, Value *out);
 
 char* valueToClrf(Value *input);
 

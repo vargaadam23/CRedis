@@ -45,7 +45,39 @@ int main()
 
 	clrfToValue("+OK\r\n", out);
 
-	printf("%d - value type - %d - simple string", out->type, out->as.ss);
+	printf("%d - value type - %s - simple string", out->type, out->as.ss);
+
+	freeValue(out);
+
+	printf("\n\n\n\n");
+
+	out = malloc(sizeof(struct Value));
+
+	clrfToValue("%3\r\n+first\r\n:1\r\n+second\r\n:2\r\n+third\r\n:89\r\n", out);
+
+	printf("%d - value type - object/map \n", out->type);
+
+
+	for (int i = 0; i < out->as.obj->count; i++)
+	{
+		printf("%s => %d\n\n", out->as.obj->keys[i]->as.ss, out->as.obj->values[i]->as.i);
+	}
+
+	freeValue(out);
+
+	printf("\n\n\n\n");
+
+	out = malloc(sizeof(struct Value));
+
+	clrfToValue("*4\r\n:1\r\n:2\r\n:3\r\n:4\r\n", out);
+
+	printf("%d - value type - array \n", out->type);
+
+
+	for (int i = 0; i < out->as.arr->count; i++)
+	{
+		printf("%d\n\n", out->as.arr->items[i]->as.i);
+	}
 
 	freeValue(out);
 	// // Disable output buffering

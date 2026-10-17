@@ -3,16 +3,6 @@
 #define MAX_BUFFER 1024
 
 typedef enum {
-    PARSE_OK = 0,
-    PARSE_ERR_SYNTAX,
-    PARSE_ERR_UNEXPECTED_END,
-    PARSE_ERR_BAD_NUMBER,
-    PARSE_ERR_UNTERMINATED_STRING,
-    PARSE_ERR_OUT_OF_MEMORY,
-    PARSE_ERR_EMPTY_STR
-} ParseError;
-
-typedef enum {
     VAL_INT,
     VAL_STRING,
     VAL_BOOL,
@@ -61,6 +51,9 @@ char* valueToClrf(Value *input);
 
 ValueType getValueType(char type);
 
+char getValueTypeNotation(ValueType type);
+
+Value* makePrimitiveValue(ValueType type, void* valuePointer);
 
 int freeObject(Object *object);
 

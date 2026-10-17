@@ -80,6 +80,14 @@ int main()
 	}
 
 	freeValue(out);
+
+
+	printf("\n\n\n\n\n");
+	out = makePrimitiveValue(VAL_STRING, (void*)"HELLOSZIAAAA");
+
+	char* result = valueToClrf(out);
+
+	printf("Value of conversion to clrf is: %s", result);
 	// // Disable output buffering
 	// setbuf(stdout, NULL);
 	// setbuf(stderr, NULL);
